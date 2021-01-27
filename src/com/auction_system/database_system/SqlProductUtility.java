@@ -49,12 +49,11 @@ public class SqlProductUtility extends SqlUtility {
         }
     }
 
-    // TODO load products that have not been sold (salePrice = 0)
     public static List<Product> loadProducts(Connection conn) throws SQLException {
         List<Product> products = new ArrayList<>();
 
         String query = "SELECT * FROM products.product_table JOIN products.furniture_table on " +
-                "product_table.id = furniture_table.id";
+                "product_table.id = furniture_table.id WHERE salePrice != 0";
         try (PreparedStatement ps = conn.prepareStatement(query)) {
             ResultSet rs = ps.executeQuery();
             while (rs.next())

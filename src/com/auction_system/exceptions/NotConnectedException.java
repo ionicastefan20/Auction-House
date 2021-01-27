@@ -1,6 +1,6 @@
 package com.auction_system.exceptions;
 
-public class NotConnectedException extends Exception {
+public class NotConnectedException extends MyException {
     public static final String MESSAGE = "Exception: Not connected!";
 
     public NotConnectedException() {

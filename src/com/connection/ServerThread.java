@@ -1,18 +1,24 @@
 package com.connection;
 
+import com.auction_system.auction_house.AuctionResult;
 import com.auction_system.entities.IEntity;
 import com.auction_system.entities.clients.Client;
-import com.auction_system.entities.employees.Administrator;
-import com.auction_system.entities.employees.Broker;
+import com.auction_system.entities.employees.*;
 import com.auction_system.exceptions.*;
+import com.auction_system.products.Product;
 import lombok.Getter;
 import lombok.SneakyThrows;
+import org.apache.commons.codec.digest.DigestUtils;
 
 import java.io.*;
 import java.net.Socket;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
+
+import static com.auction_system.products.Furniture.FurnitureBuilder;
+import static com.auction_system.products.Jewelry.JewelryBuilder;
+import static com.auction_system.products.Painting.PaintingBuilder;
+import static com.auction_system.products.Painting.Colors;
 
 import static com.auction_system.database_system.SqlEntityUtility.*;
 
@@ -20,7 +26,6 @@ public class ServerThread implements Runnable {
 
     private IEntity entity;
     private final Socket socket;
-    private String message;
     private boolean threadUp = true;
     @Getter
     private BufferedReader clientIn;
@@ -32,8 +37,8 @@ public class ServerThread implements Runnable {
     }
 
     private List<String> readMessage() throws IOException {
-        message = clientIn.readLine().trim();
-        if (message == null) return Collections.emptyList();
+        String message = clientIn.readLine().trim();
+//        if (message == null) return Collections.emptyList();
         return Arrays.asList(message.split(" "));
     }
 
@@ -51,9 +56,10 @@ public class ServerThread implements Runnable {
                     case "connect" -> connectCase(words);
                     case "loadProducts" -> loadProductsCase();
                     case "getProducts" -> getProductsCase();
+                    case "addProduct" -> addProductCase(words);
                     case "bid" -> bidCase(words);
-//                    TODO addProduct
-//                    case "addProduct" -> addProductCase(words);
+                    case "exit" -> exitCase();
+//                    case "removeProduct -> removeProductCase(words);
 //                    TODO register
 //                    case "register" -> registerCase();
 //                    TODO killServer
@@ -86,23 +92,25 @@ public class ServerThread implements Runnable {
             clientOut.flush();
 
             String hash = clientIn.readLine();
-            if (whichOne == 0)
+//            hash = DigestUtils.sha3_512Hex(hash);
+            if (whichOne == 0) {
                 entity = new Administrator(username, hash);
-            else if (whichOne == 1)
+            } else if (whichOne == 1) {
                 entity = Broker.login(username, hash);
-            else
+            } else {
                 entity = Client.login(username, hash);
 
-
+                // TODO add serverThread to constructor
+                ((Client) entity).setServerThread(this);
+            }
             clientOut.writeObject("Connection successful!");
             clientOut.flush();
-        } catch (Exception e) {
+        } catch (MyException e) {
             clientOut.writeObject(e);
             clientOut.flush();
         }
     }
 
-    // TODO register
     @SneakyThrows
     private void loadProductsCase() {
         try {
@@ -110,15 +118,16 @@ public class ServerThread implements Runnable {
             if (entity instanceof Administrator) {
                 Administrator admin = (Administrator) entity;
                 admin.getAuctionHouse().loadProducts(admin.getConn());
-                clientOut.writeObject("Products added successfully!");
+                clientOut.writeObject("Products loaded successfully!");
                 clientOut.flush();
             } else
                 throw new PermissionDeniedException();
-        } catch (Exception e) {
+        } catch (MyException e) {
             clientOut.writeObject(e);
             clientOut.flush();
         }
     }
+
     @SneakyThrows
     private void getProductsCase() {
         try {
@@ -133,7 +142,48 @@ public class ServerThread implements Runnable {
 
             clientOut.writeObject(products);
             clientOut.flush();
-        } catch (Exception e) {
+        } catch (MyException e) {
+            clientOut.writeObject(e);
+            clientOut.flush();
+        }
+    }
+
+    @SneakyThrows
+    private void addProductCase(List<String> words) {
+        try {
+            String productString = words.stream().skip(2)
+                    .reduce("", (s1, s2) -> (s1 + " " + s2));
+            String[] data = productString.substring(1).split("\\u007c");
+
+            if (!(entity instanceof Administrator)) throw new PermissionDeniedException();
+            Administrator administrator = (Administrator) entity;
+            Product.ProductBuilder builder = null;
+
+            int productId = Integer.parseInt(data[0]);
+            double minPrice = Double.parseDouble(data[2]);
+            int year = Integer.parseInt(data[3]);
+
+            if ("furniture".equalsIgnoreCase(words.get(1)))
+                builder = new FurnitureBuilder(productId, minPrice)
+                        .withType(data[4])
+                        .withMaterial(data[5]);
+            else if ("jewelry".equalsIgnoreCase(words.get(1)))
+                builder = new JewelryBuilder(productId, minPrice)
+                        .withMaterial(data[4])
+                        .withPreciousStone("yes".equals(data[5]));
+            else if ("painting".equalsIgnoreCase(words.get(1)))
+                builder = new PaintingBuilder(productId, minPrice)
+                        .withArtistName(data[4])
+                        .withColor(Colors.valueOf(data[5]));
+            else throw new InvalidOptionException();
+
+            administrator.getAuctionHouse().addProduct(administrator.getConn(), builder.withName(data[1])
+                    .withYear(year)
+                    .build());
+
+            clientOut.writeObject("Product added successfully!");
+            clientOut.flush();
+        } catch (MyException e) {
             clientOut.writeObject(e);
             clientOut.flush();
         }
@@ -142,23 +192,47 @@ public class ServerThread implements Runnable {
     @SneakyThrows
     private void bidCase(List<String> words) {
         try {
-            if (words.size() != 3) throw new WrongNumberOfArgumentsException();
+            if (words.size() != 4)
+                throw new WrongNumberOfArgumentsException();
             if (entity == null) throw new NotConnectedException();
+
             if (entity instanceof Client) {
                 Client client = (Client) entity;
-                client.getAuctionHouse().offerInit(client.getUsername(),
-                        Integer.parseInt(words.get(1)), Double.parseDouble(words.get(2)));
-                clientOut.writeObject("Products added successfully!");
-                clientOut.flush();
+                client.getAuctionHouse().offerInit(client.getUsername(), Integer.parseInt(words.get(1)),
+                        Double.parseDouble(words.get(2)), Integer.parseInt(words.get(3)));
             } else
                 throw new PermissionDeniedException();
 
-        } catch (Exception e) {
-            e.printStackTrace();
+            clientOut.writeObject("Bid added successfully!");
+            clientOut.flush();
+        } catch (MyException e) {
             clientOut.writeObject(e);
             clientOut.flush();
         }
     }
+
+    @SneakyThrows
+    private void exitCase() {
+        if (entity == null) return;
+
+        if (entity instanceof Administrator)
+            ((Administrator) entity).closeConn();
+        else if (entity instanceof Broker)
+            ((Broker) entity).getAuctionHouse().removeBroker(((Broker) entity).getUsername());
+        else
+            ((Client) entity).getAuctionHouse().removeClient(((Client) entity).getUsername());
+        entity = null;
+    }
+
+    public void sendResult(AuctionResult result) {
+        try {
+            clientOut.writeObject(result);
+            clientOut.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     /*
         private void registerCase() {
             String option;
@@ -183,7 +257,6 @@ public class ServerThread implements Runnable {
                 if ("individual".equalsIgnoreCase(option)) {
 
                 } else if ("legalEntity".equalsIgnoreCase(option)) {
-                    // TODO
                 } else
                     throw new InvalidOptionException();
             } catch (IOException | InvalidOptionException | SQLException | UserDoesntExistException e) {
@@ -192,25 +265,4 @@ public class ServerThread implements Runnable {
         }
     */
 
-/*
-    private void addProductCase(List<String> words) {
-        try {
-            String productString = words.stream().skip(2)
-                    .reduce("", (s1, s2) -> s1 + " " + s2).trim();
-
-            String[] productData = productString.split("@")
-
-            Product.ProductBuilder builder;
-
-            if ("furniture".equals(words.get(1)))
-                builder = new Furniture.FurnitureBuilder();
-
-            entity.getProxy().addProduct(
-
-                    .wi
-            );
-        } catch (IllegalArgumentException e) {
-            clientOut.println(e.getMessage());
-        }
-    }*/
 }

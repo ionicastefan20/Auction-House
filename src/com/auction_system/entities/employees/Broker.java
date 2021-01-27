@@ -1,12 +1,14 @@
 package com.auction_system.entities.employees;
 
+import com.auction_system.auction_house.AuctionResult;
 import com.auction_system.auction_house.BrokerAHProxy;
 import com.auction_system.auction_house.IBrokerAH;
 import com.auction_system.entities.clients.Client;
 import com.auction_system.entities.clients.Individual;
-import com.auction_system.exceptions.UserDoesNotExistException;
-import com.auction_system.exceptions.WrongPasswordException;
+import com.auction_system.exceptions.MyException;
 import lombok.Getter;
+import lombok.ToString;
+import org.apache.commons.lang3.builder.ToStringExclude;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -14,17 +16,18 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@ToString
 public class Broker implements IEmployee {
 
     @Getter
     private final String username;
 
-    // TODO update this
-    private Double totalCommission;
+    private double totalCommission;
 
+    @Getter @ToStringExclude
     private final Map<String, BidData> bidsData = new HashMap<>();
 
-    @Getter
+    @Getter @ToStringExclude
     private final IBrokerAH auctionHouse;
 
     public Broker(String username) {
@@ -32,7 +35,7 @@ public class Broker implements IEmployee {
         auctionHouse = new BrokerAHProxy();
     }
 
-    public static Broker login(String username, String hash) throws UserDoesNotExistException, SQLException, WrongPasswordException {
+    public static Broker login(String username, String hash) throws MyException, SQLException {
         return new BrokerAHProxy().loginBroker(username, hash);
     }
 
@@ -74,13 +77,26 @@ public class Broker implements IEmployee {
         return bids;
     }
 
-    private static class BidData {
-        private final Client client;
-        private final int productId;
-        private final double maxPrice;
-        private final double commission;
+    public void processResults(Pair<String, Double> maxBid, int productId) {
+        String id = productId + maxBid.getLeft();
 
-        public BidData(Client client, int productId, double maxPrice, double commission) {
+        if (bidsData.containsKey(id))
+            totalCommission += bidsData.get(id).commission * maxBid.getRight();
+
+        bidsData.values().stream().filter(bidData -> bidData.productId == productId)
+                .parallel().forEach(bidData -> bidData.client.sendResult(
+                        new AuctionResult(maxBid.getLeft(), productId, maxBid.getRight())));
+
+        bidsData.remove(id);
+    }
+
+    private static class BidData {
+        final Client client;
+        final int productId;
+        final double maxPrice;
+        final double commission;
+
+        BidData(Client client, int productId, double maxPrice, double commission) {
             this.client = client;
             this.productId = productId;
             this.maxPrice = maxPrice;

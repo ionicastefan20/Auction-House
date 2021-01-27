@@ -3,6 +3,7 @@ package com.auction_system.database_system;
 import com.auction_system.entities.clients.Client;
 import com.auction_system.entities.clients.Individual;
 import com.auction_system.entities.clients.LegalEntity;
+import com.auction_system.exceptions.MyException;
 import com.auction_system.exceptions.UserAlreadyExistsException;
 import com.auction_system.exceptions.WrongPasswordException;
 
@@ -27,7 +28,7 @@ public class SqlClientUtility extends SqlUtility {
         }
     }
 
-    public static void registerClient(Client client, String hash) throws SQLException, UserAlreadyExistsException {
+    public static void registerClient(Client client, String hash) throws MyException, SQLException {
         String username = client.getUsername();
         if (checkIfClientExists(username) || checkIfBrokerExists(username))
             throw new UserAlreadyExistsException(username);
@@ -72,7 +73,7 @@ public class SqlClientUtility extends SqlUtility {
             }
     }
 
-    public static Client loginClient(String username, String hash) throws SQLException, WrongPasswordException {
+    public static Client loginClient(String username, String hash) throws MyException, SQLException {
         String query = "SELECT * FROM entities.client_table JOIN entities.individual_table on " +
                 "client_table.id = individual_table.id WHERE username = '" + username + "' AND " +
                 "password = '" + hash + "';";

@@ -6,6 +6,7 @@ import com.auction_system.entities.clients.Client;
 import com.auction_system.entities.clients.Individual;
 import com.auction_system.entities.employees.Administrator;
 import com.auction_system.entities.employees.Broker;
+import com.auction_system.exceptions.MyException;
 import com.auction_system.exceptions.UserAlreadyExistsException;
 import com.auction_system.exceptions.UserDoesNotExistException;
 import com.auction_system.exceptions.WrongPasswordException;
@@ -24,7 +25,7 @@ public class AuctionTest {
     }
 
     @Test
-    public void registerClient() throws UserAlreadyExistsException, SQLException {
+    public void registerClient() throws MyException, SQLException {
         Client naomi = new Individual.IndividualBuilder("nixony")
                 .withName("Hall Nixon")
                 .withAddress("P.O. Box 498, 8571 Duis Street, Luxembourg")
@@ -35,7 +36,7 @@ public class AuctionTest {
     }
 
     @Test
-    public void loginClients() throws UserDoesNotExistException, SQLException, WrongPasswordException {
+    public void loginClients() throws MyException, SQLException {
         barry = Client.login("barry02", DigestUtils.sha3_512Hex("barry02"));
         naomi = Client.login("naomi6", DigestUtils.sha3_512Hex("naomi6"));
         karen = Client.login("karenBitch", DigestUtils.sha3_512Hex("karenBitch"));
@@ -43,19 +44,19 @@ public class AuctionTest {
     }
 
     @Test
-    public void registerBroker() throws UserAlreadyExistsException, SQLException {
+    public void registerBroker() throws MyException, SQLException {
         new BrokerAHProxy().registerBroker(new Broker("radu07"), DigestUtils.sha3_512Hex("radu07"));
         new BrokerAHProxy().registerBroker(new Broker("mihai8"), DigestUtils.sha3_512Hex("mihai8"));
     }
 
     @Test
-    public void loginBrokers() throws UserDoesNotExistException, SQLException, WrongPasswordException {
+    public void loginBrokers() throws MyException, SQLException {
         radu = Broker.login("radu07", DigestUtils.sha3_512Hex("radu07"));
         mihai = Broker.login("mihai8", DigestUtils.sha3_512Hex("mihai8"));
     }
 
     @Test
-    public void loadProducts() throws Exception {
+    public void loadProducts() throws SQLException {
         admin.getAuctionHouse().loadProducts(admin.getConn());
         admin.getAuctionHouse().getProducts().forEach(System.out::println);
     }
@@ -68,10 +69,10 @@ public class AuctionTest {
             loginBrokers();
             loginClients();
 
-            barry.getAuctionHouse().offerInit(barry.getUsername(), 101, 7000);
-            naomi.getAuctionHouse().offerInit(naomi.getUsername(), 101, 8200);
-            karen.getAuctionHouse().offerInit(karen.getUsername(), 101, 7800);;
-            nixon.getAuctionHouse().offerInit(nixon.getUsername(), 101, 6900);
+            barry.getAuctionHouse().offerInit(barry.getUsername(), 101, 7000, 3);
+            naomi.getAuctionHouse().offerInit(naomi.getUsername(), 101, 8200, 7);
+            karen.getAuctionHouse().offerInit(karen.getUsername(), 101, 7800, 8);;
+            nixon.getAuctionHouse().offerInit(nixon.getUsername(), 101, 6900, 1);
 
             admin.getAuctionHouse().stopExecutor();
 

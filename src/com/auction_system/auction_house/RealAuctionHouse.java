@@ -5,6 +5,7 @@ import com.auction_system.entities.clients.Client;
 import com.auction_system.entities.employees.Broker;
 import com.auction_system.exceptions.*;
 import com.auction_system.products.Product;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -16,10 +17,9 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
 
     // only with bidding clients
     final Map<String, Client> clientMap = new ConcurrentHashMap<>();
+    private final Map<String, Broker> brokerMap = new ConcurrentHashMap<>();
 
-    // loads all products at startup
     final Map<Integer, Product> productMap = new ConcurrentHashMap<>();
-    private final List<Broker> brokerList = new CopyOnWriteArrayList<>();
     final ExecutorService auctionExecutor = Executors.newFixedThreadPool(4);
 
     /**
@@ -44,6 +44,7 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
                 .collect(Collectors.toList());
     }
 
+    // Composite Design Pattern yoooo
     @Override
     public synchronized void addProduct(Connection conn, Product product) throws SQLException {
         SqlProductUtility.addProduct(conn, product);
@@ -62,13 +63,13 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
     }
 
     @Override
-    public synchronized void registerClient(Client client, String hash) throws UserAlreadyExistsException, SQLException {
+    public synchronized void registerClient(Client client, String hash) throws MyException, SQLException {
         SqlClientUtility.registerClient(client, hash);
         clientMap.put(client.getUsername(), client);
     }
 
     @Override
-    public synchronized Client loginClient(String username, String hash) throws SQLException, WrongPasswordException {
+    public synchronized Client loginClient(String username, String hash) throws MyException, SQLException {
         Client client = SqlClientUtility.loginClient(username, hash);
         clientMap.put(client.getUsername(), client);
 
@@ -76,11 +77,22 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
     }
 
     @Override
-    public synchronized void offerInit(String username, int productId, double maxPrice) throws NoBrokersException, ProductDoesNotExistException, InvalidPriceException {
-        if (brokerList.isEmpty()) throw new NoBrokersException();
-        if (!productMap.containsKey(productId)) throw new ProductDoesNotExistException(productId);
+    public synchronized void removeClient(String username) {
+        clientMap.remove(username);
+    }
 
-        Broker broker = brokerList.get(new Random().nextInt(brokerList.size()));
+    @Override
+    public synchronized void offerInit(String username, int productId, double maxPrice, int rate)
+            throws MyException {
+        if (brokerMap.isEmpty())
+            throw new NoBrokersException();
+        if (!productMap.containsKey(productId))
+            throw new ProductDoesNotExistException(productId);
+        if (productMap.get(productId).getAuction().containsParticipant(username, productId))
+            throw new BidOnTheSameProductException(productId);
+
+        int index = new Random().nextInt(brokerMap.size()) - 1;
+        Broker broker = brokerMap.values().toArray(new Broker[0])[index];
 
         Product product = productMap.get(productId);
         if (product.getMinPrice() > maxPrice) throw new InvalidPriceException();
@@ -88,27 +100,39 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
         Auction auction = product.getAuction();
 
         broker.addClient(clientMap.get(username), productId, maxPrice);
-        clientMap.get(username).addBid(productId, maxPrice);
+        clientMap.get(username).addBid(productId, maxPrice, rate);
         auction.addParticipant(broker);
     }
 
     @Override
-    public synchronized void registerBroker(Broker broker, String hash) throws UserAlreadyExistsException, SQLException {
-        SqlBrokerUtility.registerBroker(broker, hash);
-        brokerList.add(broker);
-
-    }
-
-    @Override
-    public synchronized Broker loginBroker(String username, String hash) throws UserDoesNotExistException, SQLException, WrongPasswordException {
+    public synchronized Broker loginBroker(String username, String hash) throws MyException, SQLException {
         Broker broker = SqlBrokerUtility.loginBroker(username, hash);
-        brokerList.add(broker);
+        brokerMap.put(broker.getUsername(), broker);
 
         return broker;
     }
 
+    @Override
+    public synchronized void registerBroker(Broker broker, String hash) throws MyException, SQLException {
+        SqlBrokerUtility.registerBroker(broker, hash);
+        brokerMap.put(broker.getUsername(), broker);
+    }
+
+    @Override
+    public synchronized void removeBroker(String username) {
+        brokerMap.remove(username);
+    }
+
     void startAuction(Auction auction) {
         auctionExecutor.execute(auction);
+    }
+
+    Pair<String, Double> getMax(List<Pair<String, Double>> currentBids) {
+        return Collections.max(currentBids,
+                Comparator.comparing((Pair<String, Double> p) -> p.getRight())
+                        .thenComparing((Pair<String, Double> p) -> clientMap.get(p.getLeft()).getWonAuctionsNum())
+        );
+
     }
 
     @Override

@@ -1,67 +1,76 @@
 package com.auction_system.entities.clients;
 
+import com.auction_system.auction_house.AuctionResult;
 import com.auction_system.auction_house.ClientAHProxy;
 import com.auction_system.auction_house.IClientAH;
+import com.auction_system.bidding_strategies.AutoBid;
+import com.auction_system.bidding_strategies.BiddingContext;
 import com.auction_system.entities.IEntity;
-import com.auction_system.exceptions.UserAlreadyExistsException;
-import com.auction_system.exceptions.UserDoesNotExistException;
-import com.auction_system.exceptions.WrongPasswordException;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.ToString;
+import com.auction_system.exceptions.MyException;
+import com.connection.ServerThread;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 
-@Getter
 @ToString
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@FieldDefaults(level = AccessLevel.PROTECTED)
 public abstract class Client implements IEntity {
 
-    @EqualsAndHashCode.Include
-    protected final String username;
-    protected String name;
-    protected String address;
-    protected int attendance;
-    protected int wonAuctionsNum;
-    private final Map<Integer, Double> currentBids = new HashMap<>();
+    @Getter @EqualsAndHashCode.Include
+    final String username;
 
-    protected final IClientAH auctionHouse;
+    @Getter
+    String name;
+
+    @Getter
+    String address;
+
+    @Getter
+    int attendance;
+
+    @Getter
+    int wonAuctionsNum;
+
+    @Setter
+    ServerThread serverThread;
+
+    @Getter
+    final IClientAH auctionHouse;
+
+    final Map<Integer, Pair<Double, BiddingContext>> currentBids = new HashMap<>();
 
     protected Client(String username) {
         this.username = username;
         auctionHouse = new ClientAHProxy();
     }
 
-    public static Client login(String username, String hash) throws UserDoesNotExistException, SQLException, WrongPasswordException {
+    public static Client login(String username, String hash) throws MyException, SQLException {
         return new ClientAHProxy().loginClient(username, hash);
     }
 
-    public static void register(Client client, String hash) throws SQLException, UserAlreadyExistsException {
+    public static void register(Client client, String hash) throws MyException, SQLException {
         new ClientAHProxy().registerClient(client, hash);
     }
 
-    public void addBid(int productId, double maxPrice) {
-        if (!currentBids.containsKey(productId))
-            currentBids.put(productId, maxPrice);
+    public void addBid(int productId, double maxPrice, int rate) {
+        if (!currentBids.containsKey(productId)) {
+            currentBids.put(productId, new ImmutablePair<>(maxPrice, new BiddingContext(
+                    new AutoBid(maxPrice, rate))));
+        }
     }
 
-    // TODO strategy pattern here for auto/manual bid
     public double getOffer(int productId, double maxBid) {
-        double newBid = -1;
-        double maxPrice = currentBids.get(productId);
+        return currentBids.get(productId).getRight().execute(maxBid);
+    }
 
-        // TODO get offer from client
-
-        if (maxBid < maxPrice) {
-            // TODO auto cu rata de zgarcire de la 1 la 10
-            newBid = maxBid + (maxPrice -  maxBid) / (new Random().nextInt(10) + 10);
-        } else if (maxBid == maxPrice)
-            newBid = maxPrice;
-
-        return newBid;
+    public void sendResult(AuctionResult result) {
+        serverThread.sendResult(result);
     }
 
     public static class ClientBuilder {

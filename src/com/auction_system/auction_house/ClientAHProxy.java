@@ -16,17 +16,21 @@ public class ClientAHProxy implements IClientAH {
     }
 
     @Override
-    public void registerClient(Client client, String hash) throws UserAlreadyExistsException, SQLException {
+    public void registerClient(Client client, String hash) throws MyException, SQLException {
         realAuctionHouse.registerClient(client, hash);
     }
 
     @Override
-    public Client loginClient(String username, String hash) throws SQLException, WrongPasswordException {
+    public Client loginClient(String username, String hash) throws MyException, SQLException {
         return realAuctionHouse.loginClient(username, hash);
     }
 
     @Override
-    public void offerInit(String username, int productId, double maxPrice) throws NoBrokersException, ProductDoesNotExistException, InvalidPriceException {
-        realAuctionHouse.offerInit(username, productId, maxPrice);
+    public void offerInit(String username, int productId, double maxPrice, int rate) throws MyException {
+        realAuctionHouse.offerInit(username, productId, maxPrice, rate);
+    }
+
+    public void removeClient(String username) {
+        realAuctionHouse.removeClient(username);
     }
 }

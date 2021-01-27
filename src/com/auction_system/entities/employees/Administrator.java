@@ -4,7 +4,7 @@ import com.auction_system.auction_house.AdminAHProxy;
 import com.auction_system.auction_house.BrokerAHProxy;
 import com.auction_system.auction_house.IAdminAH;
 import com.auction_system.database_system.SqlUtility;
-import com.auction_system.exceptions.UserAlreadyExistsException;
+import com.auction_system.exceptions.MyException;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
@@ -28,7 +28,11 @@ public class Administrator implements IEmployee {
         auctionHouse = new AdminAHProxy();
     }
 
-    public static void registerBroker(Broker broker, String hash) throws SQLException, UserAlreadyExistsException {
+    public static void registerBroker(Broker broker, String hash) throws MyException, SQLException {
         new BrokerAHProxy().registerBroker(broker, hash);
+    }
+
+    public void closeConn() throws SQLException {
+        conn.close();
     }
 }

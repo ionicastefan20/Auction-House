@@ -1,6 +1,7 @@
 package com.auction_system.auction_house;
 
 import com.auction_system.entities.employees.Broker;
+import com.auction_system.exceptions.MyException;
 import com.auction_system.exceptions.UserAlreadyExistsException;
 import com.auction_system.exceptions.UserDoesNotExistException;
 import com.auction_system.exceptions.WrongPasswordException;
@@ -19,13 +20,12 @@ public class BrokerAHProxy implements IBrokerAH {
 
     // TODO
     @Override
-    public void registerBroker(Broker broker, String hash) throws UserAlreadyExistsException, SQLException {
+    public void registerBroker(Broker broker, String hash) throws MyException, SQLException {
         realAuctionHouse.registerBroker(broker, hash);
     }
 
-    // TODO
     @Override
-    public Broker loginBroker(String username, String hash) throws UserDoesNotExistException, SQLException, WrongPasswordException {
+    public Broker loginBroker(String username, String hash) throws MyException, SQLException {
         return realAuctionHouse.loginBroker(username, hash);
     }
 
@@ -34,4 +34,9 @@ public class BrokerAHProxy implements IBrokerAH {
 //    public void markAsSold(Connection conn, int id) throws SQLException {
 //        removeProduct(conn, id);
 //    }
+
+    @Override
+    public void removeBroker(String username) {
+        realAuctionHouse.removeBroker(username);
+    }
 }

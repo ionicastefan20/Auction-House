@@ -1,6 +1,5 @@
 package com.auction_system.auction_house;
 
-import com.auction_system.entities.clients.Client;
 import com.auction_system.entities.employees.Broker;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -15,66 +14,91 @@ public class Auction implements Runnable {
     private int productId;
 
     private int currentParticipantsNum;
-        private final int participantsNum = 4;
+    private final int participantsNum = 4;
 //    private int participantsNum = new Random().nextInt(5) + 2;
 
     private int maxStepNum = new Random().nextInt(11) + 5;
-    private Set<Broker> brokerSet = new HashSet<>();
+
+    private MutablePair<String, Double> maxBid;
+    private final Set<Broker> brokerSet = new HashSet<>();
+    private final Set<Broker> announceSet = new HashSet<>();
 
     public Auction(int productId) {
         this.productId = productId;
     }
 
-    public synchronized void addParticipant(Broker broker) {
+    boolean containsParticipant(String username, int productId) {
+        String newId = productId + username;
+        for (Broker broker : brokerSet) {
+            if (broker.getBidsData().containsKey(newId)) return true;
+        }
+        return false;
+    }
+
+    public void addParticipant(Broker broker) {
         brokerSet.add(broker);
         currentParticipantsNum++;
         if (currentParticipantsNum == participantsNum)
             RealAuctionHouse.getInstance().startAuction(this);
     }
 
-    // TODO the max bid is calculated in the AuctionHouse
+    // TODO
+    void announceResults() {
+        announceSet.parallelStream().forEach(b -> b.processResults(maxBid, productId));
+
+        Iterator<Broker> it = brokerSet.iterator();
+        while (it.hasNext()) {
+            // TODO Thread this shit up
+
+        }
+    }
+
     @Override
     public void run() {
+        announceSet.addAll(brokerSet);
+        Set<Broker> toBeRemoved = new HashSet<>();
         RealAuctionHouse realAuctionHouse = RealAuctionHouse.getInstance();
-        MutablePair<String, Double> maxBid = new MutablePair<>("", realAuctionHouse.productMap
-                .get(productId).getMinPrice());
-        Map<String, Client> clientMap = realAuctionHouse.clientMap;
+        double startingBid = new Random().nextDouble() * realAuctionHouse.productMap
+                .get(productId).getMinPrice();
+        maxBid = new MutablePair<>("", startingBid);
 
-        System.out.println(maxStepNum);
         while (maxStepNum > 0) {
             List<Pair<String, Double>> currentBids = new LinkedList<>();
-
+            new Random().nextInt(5);
+            /*
             Iterator<Broker> it = brokerSet.iterator();
             while (it.hasNext()) {
-                // TODO Thread this shit up
                 List<Pair<String, Double>> bids = it.next().getBids(productId, maxBid.getValue());
                 if (bids.isEmpty())
                     it.remove();
                 else
                     currentBids.addAll(bids);
-            }
+            }*/
+            brokerSet.parallelStream().forEach(broker -> {
+                List<Pair<String, Double>> bids = broker.getBids(productId, maxBid.getValue());
+                if (bids.isEmpty())
+                    toBeRemoved.add(broker);
+                else
+                    currentBids.addAll(bids);
+            });
 
-            if (!currentBids.isEmpty()) {
-                currentBids.forEach(pair -> System.out.println(pair.getLeft() + ": " + pair.getRight()));
-                Pair<String, Double> biggestBid = Collections.max(currentBids,
-                        Comparator.comparing((Pair<String, Double> p) -> p.getRight())
-                                .thenComparing((Pair<String, Double> p) -> clientMap.get(p.getLeft()).getWonAuctionsNum())
-                );
+            if (currentBids.isEmpty() || (currentBids.size() == 1)) {
+                break;
+            } else {
+                Pair<String, Double> biggestBid = realAuctionHouse.getMax(currentBids);
 
                 maxBid.left = biggestBid.getLeft();
                 maxBid.right = biggestBid.getRight();
-                System.out.println(biggestBid.getRight() + "\n");
-            } else
-                break;
+            }
 
-            if (currentBids.size() == 1)
-                break;
-
+            toBeRemoved.parallelStream().forEach(brokerSet::remove);
             maxStepNum--;
         }
 
         // TODO announce winner
-        System.out.println(maxBid.left + ": " + String.format("%,.02f", maxBid.right));
+        announceResults();
+
+        // TODO add finished auctions to db
     }
 
     @Override

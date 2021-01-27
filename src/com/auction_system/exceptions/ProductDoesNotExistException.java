@@ -1,6 +1,6 @@
 package com.auction_system.exceptions;
 
-public class ProductDoesNotExistException extends Exception {
+public class ProductDoesNotExistException extends MyException {
     public static final String MESSAGE1 = "Exception: The product (";
     public static final String MESSAGE2 = ") does not exist!";
 

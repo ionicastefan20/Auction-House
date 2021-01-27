@@ -1,0 +1,6 @@
+connect [user]
+loadProducts
+getProducts
+addProduct [type(furniture/painting/jewelry)] [productDataSplitBy("|")]
+bid [productId] [maxBid] [riskRate (1-10)]
+exit

@@ -1,11 +1,5 @@
 package com.auction_system.database_system;
 
-import com.auction_system.entities.clients.Client;
-import com.auction_system.entities.clients.Individual;
-import com.auction_system.entities.clients.LegalEntity;
-import com.auction_system.exceptions.UserAlreadyExistsException;
-import com.auction_system.exceptions.WrongPasswordException;
-
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;

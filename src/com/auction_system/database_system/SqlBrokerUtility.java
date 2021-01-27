@@ -1,6 +1,7 @@
 package com.auction_system.database_system;
 
 import com.auction_system.entities.employees.Broker;
+import com.auction_system.exceptions.MyException;
 import com.auction_system.exceptions.UserAlreadyExistsException;
 import com.auction_system.exceptions.WrongPasswordException;
 
@@ -14,7 +15,7 @@ public class SqlBrokerUtility extends SqlUtility {
 
     private SqlBrokerUtility() {}
 
-    public static void registerBroker(Broker broker, String hash) throws SQLException, UserAlreadyExistsException {
+    public static void registerBroker(Broker broker, String hash) throws MyException, SQLException {
         String username = broker.getUsername();
         if (checkIfClientExists(username) || checkIfBrokerExists(username))
             throw new UserAlreadyExistsException(username);
@@ -30,7 +31,7 @@ public class SqlBrokerUtility extends SqlUtility {
         }
     }
 
-    public static Broker loginBroker(String username, String hash) throws SQLException, WrongPasswordException {
+    public static Broker loginBroker(String username, String hash) throws MyException, SQLException {
 
         String query = "SELECT * FROM entities.broker_table WHERE username = '" + username + "' " +
                 "AND password = '" + hash + "';";

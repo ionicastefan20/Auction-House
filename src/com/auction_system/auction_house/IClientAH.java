@@ -10,9 +10,11 @@ public interface IClientAH {
 
     List<String> getProducts();
 
-    void registerClient(Client client, String hash) throws UserAlreadyExistsException, SQLException;
+    void registerClient(Client client, String hash) throws MyException, SQLException;
 
-    Client loginClient(String username, String hash) throws SQLException, UserDoesNotExistException, WrongPasswordException;
+    Client loginClient(String username, String hash) throws MyException, SQLException;
 
-    void offerInit(String username, int productId, double maxPrice) throws NoBrokersException, ProductDoesNotExistException, InvalidPriceException;
+    void offerInit(String username, int productId, double maxPrice, int rate) throws MyException;
+
+    void removeClient(String username);
 }
