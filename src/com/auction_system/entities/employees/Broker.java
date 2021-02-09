@@ -7,6 +7,7 @@ import com.auction_system.entities.clients.Client;
 import com.auction_system.entities.clients.Individual;
 import com.auction_system.exceptions.MyException;
 import lombok.Getter;
+import lombok.SneakyThrows;
 import lombok.ToString;
 import org.apache.commons.lang3.builder.ToStringExclude;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -22,6 +23,7 @@ public class Broker implements IEmployee {
     @Getter
     private final String username;
 
+    @Getter
     private double totalCommission;
 
     @Getter @ToStringExclude
@@ -37,6 +39,10 @@ public class Broker implements IEmployee {
 
     public static Broker login(String username, String hash) throws MyException, SQLException {
         return new BrokerAHProxy().loginBroker(username, hash);
+    }
+
+    public static void register(Broker broker, String hash) throws MyException, SQLException {
+        new BrokerAHProxy().registerBroker(broker, hash);
     }
 
     public void addClient(Client client, int productId, double maxPrice) {
@@ -61,31 +67,38 @@ public class Broker implements IEmployee {
         }
     }
 
-    public List<Pair<String, Double>> getBids(int productId, double maxBid) {
-        List<Pair<String, Double>> bids = new LinkedList<>();
-
-        // TODO announce pre-final losers
+    public synchronized List<Pair<String, Double>> getBids(int productId, double maxBid) {
+        List<Pair<String, Double>> bids = new ArrayList<>();
 
         Set<Client> clientSet = this.bidsData.values().stream()
                 .filter(bidData -> bidData.productId == productId)
                 .filter(bidData -> bidData.maxPrice > maxBid)
                 .map(bidData -> bidData.client)
                 .collect(Collectors.toSet());
+
         clientSet.forEach(client -> bids.add(
                 new ImmutablePair<>(client.getUsername(), client.getOffer(productId, maxBid))));
 
         return bids;
     }
 
-    public void processResults(Pair<String, Double> maxBid, int productId) {
+    public synchronized void announceResults(Pair<String, Double> maxBid, int productId, Pair<Integer, Integer> step) {
         String id = productId + maxBid.getLeft();
 
         if (bidsData.containsKey(id))
             totalCommission += bidsData.get(id).commission * maxBid.getRight();
 
+//        ExecutorService es = Executors.newCachedThreadPool();
+//        bidsData.values().stream().filter(bidData -> bidData.productId == productId)
+//                .parallel().forEach(bidData -> es.execute(() -> bidData.client.getResult(
+//                        new AuctionResult(maxBid.getLeft(), productId, maxBid.getRight(), step))));
+//        es.shutdown();
+//        while(!es.isTerminated()) {
+//            es.awaitTermination(1, TimeUnit.MINUTES);
+//        }
         bidsData.values().stream().filter(bidData -> bidData.productId == productId)
-                .parallel().forEach(bidData -> bidData.client.sendResult(
-                        new AuctionResult(maxBid.getLeft(), productId, maxBid.getRight())));
+                .parallel().forEach(bidData -> bidData.client.announceResults(
+                        new AuctionResult(maxBid.getLeft(), productId, maxBid.getRight(), step)));
 
         bidsData.remove(id);
     }

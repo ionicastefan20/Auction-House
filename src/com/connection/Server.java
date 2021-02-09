@@ -1,5 +1,7 @@
 package com.connection;
 
+import com.connection.server_thread.ServerThread;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -21,7 +23,6 @@ public class Server {
         keepServerUp = false;
         exit(0);
     }
-
 
     private static void init() {
         try (ServerSocket serverSocket = new ServerSocket(8080)) {

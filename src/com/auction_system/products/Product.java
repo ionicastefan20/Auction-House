@@ -2,6 +2,7 @@ package com.auction_system.products;
 
 import com.auction_system.auction_house.Auction;
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 public abstract class Product {
@@ -9,7 +10,7 @@ public abstract class Product {
     private final int id;
     private String name;
 
-    // TODO UPDATE SALE PRICE
+    @Setter
     private double salePrice;
 
     private final double minPrice;

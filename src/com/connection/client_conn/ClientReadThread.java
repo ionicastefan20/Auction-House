@@ -17,7 +17,7 @@ public class ClientReadThread extends Thread {
 
     @Override
     public void run() {
-        while (!Thread.currentThread().isInterrupted()) {
+        while (!this.isInterrupted()) {
             try {
                 blockingQueue.put(conn.serverIn.readObject());
             } catch (Exception e) {

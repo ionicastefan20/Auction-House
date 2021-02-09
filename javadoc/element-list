@@ -1,0 +1,12 @@
+com.auction_system
+com.auction_system.auction_house
+com.auction_system.bidding_strategies
+com.auction_system.database_system
+com.auction_system.entities
+com.auction_system.entities.clients
+com.auction_system.entities.employees
+com.auction_system.exceptions
+com.auction_system.products
+com.connection
+com.connection.client_conn
+com.connection.server_thread

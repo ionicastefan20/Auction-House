@@ -1,28 +1,43 @@
 package com.auction_system.auction_house;
 
 import com.auction_system.entities.employees.Broker;
+import com.auction_system.products.Product;
 import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.SneakyThrows;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.*;
 
 public class Auction implements Runnable {
 
     @Getter(AccessLevel.PACKAGE)
-    private int productId;
+    private final int productId;
 
-    private int currentParticipantsNum;
-    private final int participantsNum = 4;
-//    private int participantsNum = new Random().nextInt(5) + 2;
+    int currentParticipantsNum;
 
+    // for testing purposes set the limit to 3 participants
+    final int maxParticipantsNum = 1;
+//    final int maxParticipantsNum = new Random().nextInt(5) + 2;
+
+    private int currentStep = 0;
     private int maxStepNum = new Random().nextInt(11) + 5;
 
     private MutablePair<String, Double> maxBid;
     private final Set<Broker> brokerSet = new HashSet<>();
     private final Set<Broker> announceSet = new HashSet<>();
 
+    private PrintStream ps;
+
+    @SneakyThrows
     public Auction(int productId) {
         this.productId = productId;
     }
@@ -38,42 +53,26 @@ public class Auction implements Runnable {
     public void addParticipant(Broker broker) {
         brokerSet.add(broker);
         currentParticipantsNum++;
-        if (currentParticipantsNum == participantsNum)
+        if (currentParticipantsNum == maxParticipantsNum)
             RealAuctionHouse.getInstance().startAuction(this);
     }
 
-    // TODO
-    void announceResults() {
-        announceSet.parallelStream().forEach(b -> b.processResults(maxBid, productId));
-
-        Iterator<Broker> it = brokerSet.iterator();
-        while (it.hasNext()) {
-            // TODO Thread this shit up
-
-        }
-    }
-
+    @SneakyThrows
     @Override
     public void run() {
+        setOut();
         announceSet.addAll(brokerSet);
+
         Set<Broker> toBeRemoved = new HashSet<>();
         RealAuctionHouse realAuctionHouse = RealAuctionHouse.getInstance();
-        double startingBid = new Random().nextDouble() * realAuctionHouse.productMap
-                .get(productId).getMinPrice();
+        double minPrice = realAuctionHouse.getProduct(productId).getMinPrice();
+        double startingBid = new Random().nextDouble() * minPrice;
+
         maxBid = new MutablePair<>("", startingBid);
 
-        while (maxStepNum > 0) {
-            List<Pair<String, Double>> currentBids = new LinkedList<>();
-            new Random().nextInt(5);
-            /*
-            Iterator<Broker> it = brokerSet.iterator();
-            while (it.hasNext()) {
-                List<Pair<String, Double>> bids = it.next().getBids(productId, maxBid.getValue());
-                if (bids.isEmpty())
-                    it.remove();
-                else
-                    currentBids.addAll(bids);
-            }*/
+        for (currentStep = 0; currentStep < maxStepNum; currentStep++) {
+            CopyOnWriteArrayList<Pair<String, Double>> currentBids = new CopyOnWriteArrayList<>();
+
             brokerSet.parallelStream().forEach(broker -> {
                 List<Pair<String, Double>> bids = broker.getBids(productId, maxBid.getValue());
                 if (bids.isEmpty())
@@ -82,9 +81,10 @@ public class Auction implements Runnable {
                     currentBids.addAll(bids);
             });
 
-            if (currentBids.isEmpty() || (currentBids.size() == 1)) {
-                break;
-            } else {
+            ps.println(productId + ": " + currentBids + " (" + (currentStep + 1) + "/" + maxStepNum + ")");
+
+            if (currentBids.isEmpty() || (currentBids.size() == 1)) break;
+            else {
                 Pair<String, Double> biggestBid = realAuctionHouse.getMax(currentBids);
 
                 maxBid.left = biggestBid.getLeft();
@@ -92,17 +92,36 @@ public class Auction implements Runnable {
             }
 
             toBeRemoved.parallelStream().forEach(brokerSet::remove);
-            maxStepNum--;
         }
 
-        // TODO announce winner
-        announceResults();
+        double salePrice = maxBid.getRight();
+        if (salePrice >= minPrice)
+            realAuctionHouse.getProduct(productId).setSalePrice(salePrice);
+        else
+            maxBid.setLeft("");
 
-        // TODO add finished auctions to db
+        announceResults();
+    }
+
+    private void setOut() throws FileNotFoundException {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd@HH-mm-ss");
+        LocalDateTime now = LocalDateTime.now();
+
+        ps = new PrintStream(new FileOutputStream("res/logs/" + productId + "_" + dtf.format(now) + ".out"));
+    }
+
+    @SneakyThrows
+    void announceResults() {
+        Product product = RealAuctionHouse.getInstance().getProduct(productId);
+        if (maxBid.getRight() < product.getMinPrice())
+            currentParticipantsNum = 0;
+
+        announceSet.parallelStream().forEach(b -> b.announceResults(maxBid, productId,
+                new ImmutablePair<>(currentStep, maxStepNum)));
     }
 
     @Override
     public String toString() {
-        return currentParticipantsNum + "/" + participantsNum;
+        return currentParticipantsNum + "/" + maxParticipantsNum;
     }
 }

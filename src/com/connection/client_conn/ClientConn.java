@@ -8,8 +8,6 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static java.lang.System.*;
 
@@ -20,7 +18,6 @@ public class ClientConn {
     BufferedReader keyboard;
     PrintWriter serverOut;
 
-    final ExecutorService executorService = Executors.newFixedThreadPool(2);
     final BlockingQueue<Object> blockingQueue = new ArrayBlockingQueue<>(1024);
     ClientWriteThread cwt;
     ClientReadThread crt;
@@ -33,18 +30,17 @@ public class ClientConn {
             serverIn = new ObjectInputStream(socket.getInputStream());
             keyboard = new BufferedReader(new InputStreamReader(System.in));
             serverOut = new PrintWriter(socket.getOutputStream(), true);
-
             cwt = new ClientWriteThread(blockingQueue);
             crt = new ClientReadThread(blockingQueue);
 
             cwt.start();
             crt.start();
 
-            while (!(cwt.isInterrupted() && crt.isInterrupted())) {
-                Thread.sleep(1000);
-            }
+            while (!(cwt.isInterrupted() && crt.isInterrupted()))
+                Thread.sleep(100);
         } catch (IOException | InterruptedException e) {
             out.println(e.getMessage());
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -62,5 +58,4 @@ public class ClientConn {
         ClientConn conn = getInstance();
         conn.init();
     }
-
 }

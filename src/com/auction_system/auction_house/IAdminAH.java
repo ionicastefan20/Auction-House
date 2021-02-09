@@ -4,18 +4,27 @@ import com.auction_system.products.Product;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.List;
 
-public interface IAdminAH {
+public interface IAdminAH extends IEntityAH {
 
-    List<String> getProducts();
-
+    /**
+     * Adds a products to the <code>AuctionHouse</code>. Only the administrator can use this method
+     * through its proxy.
+     * @param conn the SQL connection used to add the product to the house
+     * @param product the product to be added
+     * @throws SQLException if there is an SQL error
+     */
     void addProduct(Connection conn, Product product) throws SQLException;
 
+    /**
+     * Loads the products from the database into the <code>AuctionHouse</code>.
+     * @param conn the SQL connection used to load the products to the house
+     * @throws SQLException if there is an SQL error
+     */
     void loadProducts(Connection conn) throws SQLException;
 
-    // TODO remove from database too
-    void removeProduct(Connection conn, int id) throws SQLException;
-
+    /**
+     * Stops the all auctions from the <code>ExecutorService</code>.
+     */
     void stopExecutor();
 }

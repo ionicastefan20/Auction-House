@@ -1,8 +1,11 @@
 package com.auction_system.entities.clients;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
+
 @Getter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = true)
 public class LegalEntity extends Client {
     public enum Company {
         SRL,

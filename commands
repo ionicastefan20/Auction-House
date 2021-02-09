@@ -1,6 +1,9 @@
 connect [user]
 loadProducts
 getProducts
-addProduct [type(furniture/painting/jewelry)] [productDataSplitBy("|")]
+addProduct [productDataSplitBy("|")]
+removeProduct [productId]
 bid [productId] [maxBid] [riskRate (1-10)]
+register [type] [username] [password] [clientDataSplitBy("|")]
+check
 exit

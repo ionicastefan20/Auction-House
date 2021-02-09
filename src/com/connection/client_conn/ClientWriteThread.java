@@ -7,6 +7,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 
 import java.io.*;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
@@ -35,11 +36,8 @@ public class ClientWriteThread extends Thread {
             readInput();
             try {
                 processMessage();
-                Thread.sleep(100);
-                processReply();
             } catch (Exception e) {
                 out.println(e.getMessage());
-                e.printStackTrace();
             }
         }
     }
@@ -49,16 +47,38 @@ public class ClientWriteThread extends Thread {
         message = conn.keyboard.readLine();
     }
 
-    private void processMessage() {
+    private void processMessage() throws InterruptedException, IOException, SQLException, MyException {
         command = message.trim().split(" ")[0];
-        conn.serverOut.println(message);
+        if ("check".equals(command))
+            auctionChecks();
+        else {
+            if ("register".equals(command))
+                registerFilter();
+
+            conn.serverOut.println(message);
+            Thread.sleep(100);
+            processReply();
+        }
+    }
+
+    private void registerFilter() {
+        String[] data = message.trim().split(" ");
+        data[3] = DigestUtils.sha3_512Hex(data[3]);
+        message = Arrays.stream(data).reduce("", (s1, s2) -> (s1 + " " + s2)).trim();
     }
 
     private void auctionChecks() throws InterruptedException {
-        replyObject = blockingQueue.take();
-        while (replyObject instanceof AuctionResult) {
-            out.print(replyObject);
-            replyObject = blockingQueue.take();
+        if (blockingQueue.isEmpty()) out.println("Nothing there...");
+        else {
+            while (!blockingQueue.isEmpty()) {
+                replyObject = blockingQueue.take();
+                if (replyObject instanceof AuctionResult) {
+                    out.print(replyObject);
+//                replyObject = blockingQueue.take();
+                } else {
+                    break;
+                }
+            }
         }
     }
 
@@ -76,9 +96,9 @@ public class ClientWriteThread extends Thread {
 
         switch (command) {
             case "connect" -> connectCase();
-            case "register" -> registerCase();
-            case "loadProducts", "addProduct", "bid" -> defaultCase();
+            case "register", "loadProducts", "addProduct", "removeProduct", "bid" -> defaultCase();
             case "getProducts" -> getProductsCase();
+            case "getCommission" -> getCommissionCase();
             default -> out.println("No response!");
         }
     }
@@ -87,25 +107,29 @@ public class ClientWriteThread extends Thread {
         reply = (String) replyObject;
         out.print(reply);
 
-        conn.serverOut.println(DigestUtils.sha3_512Hex(conn.keyboard.readLine())); // give the password
+        conn.serverOut.println(DigestUtils.sha3_512Hex(conn.keyboard.readLine()));
 
-        auctionChecks();
+        replyObject = blockingQueue.take();
+        try {
+            if (replyObject instanceof MyException)
+                throw (MyException) replyObject;
+            else if (replyObject instanceof SQLException)
+                throw (SQLException) replyObject;
+        } catch (Exception e) {
+            out.println(e.getMessage());
+            e.printStackTrace();
+        }
         reply = (String) replyObject;
-        out.println("Auction House: " + reply);
-    }
-
-    // TODO register
-    private void registerCase() throws IOException {
-        reply = (String) replyObject;
-        out.print(reply);
-        conn.serverOut.println(conn.keyboard.readLine()); // [individual/legalEntity]
-
         out.println("Auction House: " + reply);
     }
 
     private void getProductsCase() {
         List<String> products = (List<String>) replyObject;
         products.forEach(out::println);
+    }
+
+    private void getCommissionCase() {
+        out.println((double) replyObject);
     }
 
     private void exitCase() {

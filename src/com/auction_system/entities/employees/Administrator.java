@@ -22,7 +22,6 @@ public class Administrator implements IEmployee {
     private final IAdminAH auctionHouse;
 
     public Administrator(String username, String password) throws SQLException {
-        // TODO encrypt the fucking password
         this.username = username;
         conn = SqlUtility.connect(username, password);
         auctionHouse = new AdminAHProxy();
@@ -30,6 +29,10 @@ public class Administrator implements IEmployee {
 
     public static void registerBroker(Broker broker, String hash) throws MyException, SQLException {
         new BrokerAHProxy().registerBroker(broker, hash);
+    }
+
+    public void loadProducts() throws SQLException {
+        auctionHouse.loadProducts(conn);
     }
 
     public void closeConn() throws SQLException {
