@@ -7,6 +7,7 @@ import com.auction_system.entities.clients.ClientFactory;
 import com.auction_system.entities.employees.*;
 import com.auction_system.exceptions.*;
 import com.auction_system.products.ProductFactory;
+import com.connection.Server;
 import lombok.Getter;
 import lombok.SneakyThrows;
 
@@ -26,7 +27,6 @@ public class ServerThread implements Runnable {
 
     private IEntity entity;
     private final Socket socket;
-    private boolean threadUp = true;
     @Getter
     private BufferedReader clientIn;
     @Getter
@@ -57,7 +57,7 @@ public class ServerThread implements Runnable {
             clientIn = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             clientOut = new ObjectOutputStream(socket.getOutputStream());
 
-            while (threadUp) {
+            while (true) {
                 List<String> words = readMessage();
                 if (words.isEmpty()) {
                     break;
@@ -74,17 +74,29 @@ public class ServerThread implements Runnable {
                     case "removeProduct" -> removeProductCase(words);
                     case "register" -> registerCase(words);
                     case "getCommission" -> getCommissionCase();
-//                    TODO killServer
-//                    case "killServer" -> Server.kill();
-                    default -> {
-                        clientOut.writeObject(new InvalidCommandException());
-                        clientOut.flush();
-                    }
+                    case "killServer" -> killServer();
+
+                    default -> defaultCase();
+
                 }
             }
             out.println("The connection has been closed...");
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void defaultCase() throws IOException {
+        clientOut.writeObject(new InvalidCommandException());
+        clientOut.flush();
+    }
+
+    private void killServer() {
+        try {
+            if (!(entity instanceof Administrator)) throw new PermissionDeniedException();
+            Server.kill();
+        } catch (MyException e) {
+            exceptionHandle(e);
         }
     }
 
@@ -195,7 +207,7 @@ public class ServerThread implements Runnable {
                     .reduce("", (s1, s2) -> (s1 + " " + s2)).trim();
             String[] data = productString.split(SEPARATOR);
 
-            String type = "";
+            String type;
             if (data[0].charAt(0) == '1') type = "painting";
             else if (data[0].charAt(0) == '2') type = "furniture";
             else type = "jewelry";

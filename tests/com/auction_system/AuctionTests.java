@@ -16,11 +16,14 @@ import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static java.lang.System.*;
 
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class AuctionTests {
 
-    final static int MAX_PART = 3;
+    static final int MAX_PART = 3;
     static List<Pair<String, String>> brokerCreds;
     private static List<Pair<String, String>> clientCreds;
 
@@ -30,14 +33,16 @@ public class AuctionTests {
 
     @SneakyThrows
     private static void loadUsers() {
-        brokerCreds = Files.lines(Paths.get("res/tests/brokers"))
-                .map(s -> s.split(" "))
-                .map(arr -> new ImmutablePair<>(arr[0], DigestUtils.sha3_512Hex(arr[1])))
-                .collect(Collectors.toList());
-        clientCreds = Files.lines(Paths.get("res/tests/clients"))
-                .map(s -> s.split(" "))
-                .map(arr -> new ImmutablePair<>(arr[0], DigestUtils.sha3_512Hex(arr[1])))
-                .collect(Collectors.toList());
+        try (Stream<String> stream = Files.lines(Paths.get("res/tests/brokers"))) {
+            brokerCreds = stream.map(s -> s.split(" "))
+                    .map(arr -> new ImmutablePair<>(arr[0], DigestUtils.sha3_512Hex(arr[1])))
+                    .collect(Collectors.toList());
+        }
+        try (Stream<String> stream = Files.lines(Paths.get("res/tests/clients"))) {
+            clientCreds = stream.map(s -> s.split(" "))
+                    .map(arr -> new ImmutablePair<>(arr[0], DigestUtils.sha3_512Hex(arr[1])))
+                    .collect(Collectors.toList());
+        }
     }
 
     private static void loadData(int brokerNum, int clientsNum) throws SQLException, MyException {
@@ -107,7 +112,7 @@ public class AuctionTests {
             int pIndex = p.getRight();
             try {
                 double price = prices[pIndex] + (new Random().nextInt(20) * 100);
-                System.out.println(products[pIndex] + ": " + clients[cIndex].getUsername() + " -> " + price);
+                out.println(products[pIndex] + ": " + clients[cIndex].getUsername() + " -> " + price);
                 clients[cIndex].getAuctionHouse().offerInit(clients[cIndex].getUsername(),
                         products[pIndex], price, new Random().nextInt(10) + 1);
             } catch (MyException e) {
@@ -119,8 +124,7 @@ public class AuctionTests {
     }
 
     public static void main(String[] args) {
-        // CHANGE THE NUMBER OF PARTICIPANTS TO 3 IN AUCTION.java
-        int which = 9;
+        int which = 4;
         switch (which) {
             case 1 -> test(2, 6, new int[]{100, 101, 103, 105}, new double[]{8500, 7500, 10000, 9000});
             case 2 -> test(2, 6, new int[]{205, 301, 106, 207}, new double[]{3250, 11000, 2750, 8000});
@@ -134,6 +138,5 @@ public class AuctionTests {
             case 10 -> test(2, 6, new int[]{303, 300, 107, 105}, new double[]{14000, 11000, 13000, 9750});
             default -> {}
         }
-//        test(2, 6, new int[]{100}, new double[]{8000});
     }
 }

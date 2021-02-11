@@ -18,7 +18,7 @@ public class ClientFactory {
      * @return the client
      */
     public static Client getClient(String type, String[] data) {
-        Client.ClientBuilder builder = null;
+        Client.ClientBuilder builder;
 
         if ("individual".equalsIgnoreCase(type))
             builder = new Individual.IndividualBuilder(data[0])

@@ -6,7 +6,7 @@ public class ProductFactory {
     }
 
     public static Product getProduct(String type, String[] data) {
-        Product.ProductBuilder builder = null;
+        Product.ProductBuilder builder;
 
         int productId = Integer.parseInt(data[0]);
         double minPrice = Double.parseDouble(data[2]);

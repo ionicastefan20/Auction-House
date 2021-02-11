@@ -25,11 +25,10 @@ public class Auction implements Runnable {
     int currentParticipantsNum;
 
     // for testing purposes set the limit to 3 participants
-    final int maxParticipantsNum = 1;
-//    final int maxParticipantsNum = new Random().nextInt(5) + 2;
+    static final int MAX_PARTICIPANTS_NUM = 3;
 
     private int currentStep = 0;
-    private int maxStepNum = new Random().nextInt(11) + 5;
+    private static final int MAX_STEP_NUM = new Random().nextInt(11) + 5;
 
     private MutablePair<String, Double> maxBid;
     private final Set<Broker> brokerSet = new HashSet<>();
@@ -53,7 +52,7 @@ public class Auction implements Runnable {
     public void addParticipant(Broker broker) {
         brokerSet.add(broker);
         currentParticipantsNum++;
-        if (currentParticipantsNum == maxParticipantsNum)
+        if (currentParticipantsNum == MAX_PARTICIPANTS_NUM)
             RealAuctionHouse.getInstance().startAuction(this);
     }
 
@@ -70,7 +69,7 @@ public class Auction implements Runnable {
 
         maxBid = new MutablePair<>("", startingBid);
 
-        for (currentStep = 0; currentStep < maxStepNum; currentStep++) {
+        for (currentStep = 0; currentStep < MAX_STEP_NUM; currentStep++) {
             CopyOnWriteArrayList<Pair<String, Double>> currentBids = new CopyOnWriteArrayList<>();
 
             brokerSet.parallelStream().forEach(broker -> {
@@ -81,7 +80,7 @@ public class Auction implements Runnable {
                     currentBids.addAll(bids);
             });
 
-            ps.println(productId + ": " + currentBids + " (" + (currentStep + 1) + "/" + maxStepNum + ")");
+            ps.println(productId + ": " + currentBids + " (" + (currentStep + 1) + "/" + MAX_STEP_NUM + ")");
 
             if (currentBids.isEmpty() || (currentBids.size() == 1)) break;
             else {
@@ -117,11 +116,11 @@ public class Auction implements Runnable {
             currentParticipantsNum = 0;
 
         announceSet.parallelStream().forEach(b -> b.announceResults(maxBid, productId,
-                new ImmutablePair<>(currentStep, maxStepNum)));
+                new ImmutablePair<>(currentStep, MAX_STEP_NUM)));
     }
 
     @Override
     public String toString() {
-        return currentParticipantsNum + "/" + maxParticipantsNum;
+        return currentParticipantsNum + "/" + MAX_PARTICIPANTS_NUM;
     }
 }

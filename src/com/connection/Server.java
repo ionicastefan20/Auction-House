@@ -1,6 +1,7 @@
 package com.connection;
 
 import com.connection.server_thread.ServerThread;
+import lombok.SneakyThrows;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -14,18 +15,21 @@ public class Server {
 
     private static final ExecutorService pool = Executors.newCachedThreadPool();
     private static boolean keepServerUp = true;
+    private static ServerSocket serverSocket;
 
     private Server() {
     }
 
+    @SneakyThrows
     public static void kill() {
-        out.println("Server killed...");
         keepServerUp = false;
-        exit(0);
+        serverSocket.close();
+        System.exit(0);
     }
 
     private static void init() {
-        try (ServerSocket serverSocket = new ServerSocket(8080)) {
+        try (ServerSocket serverSocket2 = new ServerSocket(8080)) {
+            serverSocket = serverSocket2;
             Socket socket;
 
             out.println("Server has started...");
@@ -36,6 +40,7 @@ public class Server {
                 pool.execute(serverThread);
                 out.println("A connection has been made...");
             }
+            out.println("Server killed");
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -56,7 +56,7 @@ public class ClientWriteThread extends Thread {
                 registerFilter();
 
             conn.serverOut.println(message);
-            Thread.sleep(100);
+            Thread.sleep(200);
             processReply();
         }
     }
@@ -74,7 +74,6 @@ public class ClientWriteThread extends Thread {
                 replyObject = blockingQueue.take();
                 if (replyObject instanceof AuctionResult) {
                     out.print(replyObject);
-//                replyObject = blockingQueue.take();
                 } else {
                     break;
                 }
@@ -117,7 +116,6 @@ public class ClientWriteThread extends Thread {
                 throw (SQLException) replyObject;
         } catch (Exception e) {
             out.println(e.getMessage());
-            e.printStackTrace();
         }
         reply = (String) replyObject;
         out.println("Auction House: " + reply);

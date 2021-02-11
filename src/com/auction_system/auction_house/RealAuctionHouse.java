@@ -26,6 +26,7 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
     /**
      * This {@link Map} holds the clients who are connected to the application.<br>
      * It is instantiated using the {@link ConcurrentHashMap} implementation for thread safety.
+     *
      * @see Client
      */
     private final Map<String, Client> clientMap = new ConcurrentHashMap<>();
@@ -33,6 +34,7 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
     /**
      * This {@link Map} holds the brokers who are connected to the application.<br>
      * It is instantiated using the {@link ConcurrentHashMap} implementation for thread safety.
+     *
      * @see Broker
      */
     private final Map<String, Broker> brokerMap = new ConcurrentHashMap<>();
@@ -40,12 +42,14 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
     /**
      * This {@link Map} holds the products that are going to be sold by the <code>AuctionHouse</code>.<br>
      * It is instantiated using the {@link ConcurrentHashMap} implementation for thread safety.
+     *
      * @see Product
      */
     private final Map<Integer, Product> productMap = new ConcurrentHashMap<>();
 
     /**
      * This {@link ExecutorService} holds each auction thread which will be created.
+     *
      * @see Auction
      */
     private final ExecutorService auctionExecutor = Executors.newCachedThreadPool();
@@ -60,6 +64,7 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
     /**
      * Returns the instance of the <code>AuctionHouse</code>. Thread safety is guaranteed by Bill Pugh's
      * Singleton implementation.
+     *
      * @return the instance of the <code>AuctionHouse</code>
      */
     public static RealAuctionHouse getInstance() {
@@ -69,6 +74,7 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
     /**
      * Returns the product with the ID given as parameter or <code>null</code> if there is
      * no product with that ID.
+     *
      * @param productId the ID of the product
      * @return the {@link Product} with
      */
@@ -79,6 +85,7 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
     /**
      * Returns a list of all products (as Strings) present at the <code>AuctionHouse</code>. Only
      * the administrator can use this method through its proxy.
+     *
      * @return a list of all products (as Strings)
      * @see List
      * @see String
@@ -87,14 +94,17 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
      */
     @Override
     public List<String> getProducts() {
-        return productMap.values().stream()
-                .map(Product::toString)
-                .collect(Collectors.toList());
+        synchronized (productMap) {
+            return productMap.values().stream()
+                    .map(Product::toString)
+                    .collect(Collectors.toList());
+        }
     }
 
     /**
      * Returns a list of the products (as Strings), which have not been sold (no sale price), present
      * at the <code>AuctionHouse</code>. Only a client can use this method through its proxy.
+     *
      * @return a list of products (as Strings)
      * @see List
      * @see String
@@ -102,15 +112,18 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
      * @see ClientAHProxy
      */
     public List<String> getProductsClient() {
-        return productMap.values().stream()
-                .filter(p -> p.getSalePrice() == 0)
-                .map(Product::toString)
-                .collect(Collectors.toList());
+        synchronized (productMap) {
+            return productMap.values().stream()
+                    .filter(p -> p.getSalePrice() == 0)
+                    .map(Product::toString)
+                    .collect(Collectors.toList());
+        }
     }
 
     /**
      * Returns a list of the products (as Strings), which have been sold (they have sale price), present
      * at the <code>AuctionHouse</code>. Only a broker can use this method through its proxy.
+     *
      * @return a list of products (as Strings)
      * @see List
      * @see String
@@ -118,15 +131,18 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
      * @see BrokerAHProxy
      */
     public List<String> getProductsBroker() {
-        return productMap.values().stream()
-                .filter(p -> p.getSalePrice() != 0)
-                .map(Product::toString)
-                .collect(Collectors.toList());
+        synchronized (productMap) {
+            return productMap.values().stream()
+                    .filter(p -> p.getSalePrice() != 0)
+                    .map(Product::toString)
+                    .collect(Collectors.toList());
+        }
     }
 
     /**
      * {@inheritDoc}
-     * @param conn the SQL connection used to add the product to the house
+     *
+     * @param conn    the SQL connection used to add the product to the house
      * @param product the product to be added
      * @throws SQLException
      */
@@ -138,6 +154,7 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
 
     /**
      * {@inheritDoc}
+     *
      * @param conn the SQL connection used to load the products to the house
      * @throws SQLException
      */
@@ -148,6 +165,7 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
 
     /**
      * {@inheritDoc}
+     *
      * @param productId the ID of the product
      * @throws SQLException
      */
@@ -161,8 +179,9 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
 
     /**
      * {@inheritDoc}
+     *
      * @param client the client to be registered
-     * @param hash the hash of the password of the client
+     * @param hash   the hash of the password of the client
      * @throws MyException
      * @throws SQLException
      */
@@ -174,8 +193,9 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
 
     /**
      * {@inheritDoc}
+     *
      * @param username the username of the client
-     * @param hash the hash of the password of the client
+     * @param hash     the hash of the password of the client
      * @return
      * @throws MyException
      * @throws SQLException
@@ -192,6 +212,7 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
 
     /**
      * {@inheritDoc}
+     *
      * @param username the username of the client
      */
     @Override
@@ -201,10 +222,11 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
 
     /**
      * {@inheritDoc}
-     * @param username the username of the client
+     *
+     * @param username  the username of the client
      * @param productId the ID of the product
-     * @param maxPrice the maximum price to be offered while bidding
-     * @param rate the growth rade
+     * @param maxPrice  the maximum price to be offered while bidding
+     * @param rate      the growth rade
      * @throws MyException
      */
     @Override
@@ -219,7 +241,7 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
 
         if (auction.containsParticipant(username, productId))
             throw new BidOnTheSameProductException(productId);
-        if (auction.currentParticipantsNum == auction.maxParticipantsNum)
+        if (auction.currentParticipantsNum == Auction.MAX_PARTICIPANTS_NUM)
             throw new MaxBidsNumberException(productId);
 
         // Select a random broker
@@ -236,8 +258,9 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
 
     /**
      * {@inheritDoc}
+     *
      * @param broker the broker to be registered
-     * @param hash the hash of the password of the broker
+     * @param hash   the hash of the password of the broker
      * @throws MyException
      * @throws SQLException
      */
@@ -249,8 +272,9 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
 
     /**
      * {@inheritDoc}
+     *
      * @param username the username of the broker
-     * @param hash the hash of the password of the broker
+     * @param hash     the hash of the password of the broker
      * @return
      * @throws MyException
      * @throws SQLException
@@ -265,6 +289,7 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
 
     /**
      * {@inheritDoc}
+     *
      * @param username the username of the broker
      */
     @Override
@@ -274,6 +299,7 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
 
     /**
      * Starts the auction.
+     *
      * @param auction the auction to be started
      */
     void startAuction(Auction auction) {
@@ -282,6 +308,7 @@ class RealAuctionHouse implements IAdminAH, IBrokerAH, IClientAH {
 
     /**
      * Gets the maximum bid.
+     *
      * @param currentBids the bids from which the the maximum one will be extracted
      * @return the maximum bid
      */

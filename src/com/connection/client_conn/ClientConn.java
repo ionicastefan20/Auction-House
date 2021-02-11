@@ -25,6 +25,10 @@ public class ClientConn {
     private ClientConn() {
     }
 
+    static void kill() {
+        System.exit(0);
+    }
+
     private void init() {
         try (Socket socket = new Socket(InetAddress.getLocalHost(), 8080)) {
             serverIn = new ObjectInputStream(socket.getInputStream());

@@ -19,7 +19,9 @@ public class ClientReadThread extends Thread {
     public void run() {
         while (!this.isInterrupted()) {
             try {
-                blockingQueue.put(conn.serverIn.readObject());
+                Object obj = conn.serverIn.readObject();
+                if (obj == null) ClientConn.kill();
+                blockingQueue.put(obj);
             } catch (Exception e) {
                 out.println(e.getMessage());
             }

@@ -7,7 +7,6 @@ import com.auction_system.entities.clients.Client;
 import com.auction_system.entities.clients.Individual;
 import com.auction_system.exceptions.MyException;
 import lombok.Getter;
-import lombok.SneakyThrows;
 import lombok.ToString;
 import org.apache.commons.lang3.builder.ToStringExclude;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -67,6 +66,12 @@ public class Broker implements IEmployee {
         }
     }
 
+    /**
+     * Returns a list with the bids of each client
+     * @param productId the id of the product
+     * @param maxBid the maximum bid so far
+     * @return a list with the bids
+     */
     public synchronized List<Pair<String, Double>> getBids(int productId, double maxBid) {
         List<Pair<String, Double>> bids = new ArrayList<>();
 
@@ -82,20 +87,19 @@ public class Broker implements IEmployee {
         return bids;
     }
 
+    /**
+     * Announces the results of the auction to each participant. Calculates the commission for the
+     * broker
+     * @param maxBid the maximum bid
+     * @param productId the id of product
+     * @param step the number of steps in which the product has been sold or not
+     */
     public synchronized void announceResults(Pair<String, Double> maxBid, int productId, Pair<Integer, Integer> step) {
         String id = productId + maxBid.getLeft();
 
         if (bidsData.containsKey(id))
             totalCommission += bidsData.get(id).commission * maxBid.getRight();
 
-//        ExecutorService es = Executors.newCachedThreadPool();
-//        bidsData.values().stream().filter(bidData -> bidData.productId == productId)
-//                .parallel().forEach(bidData -> es.execute(() -> bidData.client.getResult(
-//                        new AuctionResult(maxBid.getLeft(), productId, maxBid.getRight(), step))));
-//        es.shutdown();
-//        while(!es.isTerminated()) {
-//            es.awaitTermination(1, TimeUnit.MINUTES);
-//        }
         bidsData.values().stream().filter(bidData -> bidData.productId == productId)
                 .parallel().forEach(bidData -> bidData.client.announceResults(
                         new AuctionResult(maxBid.getLeft(), productId, maxBid.getRight(), step)));
